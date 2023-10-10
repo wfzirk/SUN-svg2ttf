@@ -1,0 +1,10 @@
+
+*.pyc
+Log/*
+Dist/*
+Svg/*
+*.log
+*.dbg
+*.err
+tmp.pnm
+
