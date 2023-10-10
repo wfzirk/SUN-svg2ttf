@@ -15,7 +15,11 @@ import logging
 from bfLog import log_setup
 from bfConfig_ttf import bfVersion, loadConfig
 
-config = loadConfig()  
+config = loadConfig() 
+
+def mkdirp(path):
+    if not os.path.exists(path):
+        os.makedirs(path) 
 
 def makeSVG(fontName, uniName, name, language):
     svgopt = config["svg_options"]
@@ -124,5 +128,8 @@ def main(*ffargs):
     return(rc)
 
 if __name__ == "__main__":
+    mkdirp('Log')
+    mkdirp('Svg')
+    mkdirp('Dist')
     rc = main(sys.argv) 
     sys.exit(rc)
