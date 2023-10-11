@@ -1,5 +1,4 @@
 # SUN-svg2ttf
- Create TTF font from SVG files created from CSV list
 Instructions for FontForge Language scripts as of SUN version 2.21
 10 Oct 2023
 
@@ -9,20 +8,19 @@ Objective:
 	Generate backfonts and documentation for the different versions of SUN.
 
 Requirements:
-    • FontForge 2020-03-14:  https://fontforge.org/en-US/.  Note.  Some versions of Fontforge have problems with tkinter
-    • Fontforge python documentation https://fontforge.org/python.html
-    • potrace:  potrace is part of fontforge.
-    • Font for type style or language i.e. times.ttf
-    • Imagemagick:  https://imagemagick.org/index.php
-    • English primary dictionary from sfd or kmn – pw(Ver)_EN.ods
-      As a csv file In the following columns:
-      Symbol, English Name, Language Name, Unicode(string), Reference
-      i.e. sym,  Aaron,  Aaron,  eb0d,  Acts 7:40
-      
+FontForge 2020-03-14:  https://fontforge.org/en-US/.  Note.  Some versions of Fontforge have problems with tkinter
+Fontforge python documentation https://fontforge.org/python.html
+potrace:  potrace is part of fontforge.
+Font for type style or language i.e. times.ttf
+Imagemagick:  https://imagemagick.org/index.php
+Dictionary of primary words as a csv file In the following columns:
+Symbol, English Name, Language Name, Unicode(string), Reference
+i.e. sym,  Aaron,  Aaron,  eb0d,  Acts 7:40
+
 Product::
 
-    • Language backfont.(sfd, woff, ttf) 
-      
+Language backfont.(sfd, woff, ttf) 
+
 Setup:  
 Install Fontforge and Imagemagick per default.
 Create a work directory containing all the python scripts and config files.
@@ -45,11 +43,16 @@ Most of the function names should be self explanatory, however some variable  na
 The order of running the scripts is important.  They should be executed in the 
 following order: csv2svg_ttf, svg2font_ttf
 
+Included are windows batch files which can be used as examples of running each script.
+
 
 BackFont Procedures:
 The requirements to generate scripts 
-    • A primary reference file as described in the requirements.Times.ttf (or other ttf file)
-    • The font file used for generating the backfont images. This can be extracted from the window pc
+A primary reference file as described in the requirements.Times.ttf (or other ttf font file)
+Execute csv2svg_ttf.py
+Execute svg2Font_ttf.py
+If need to verify output execute back2doc.py
+
 
 Scripts:
 
