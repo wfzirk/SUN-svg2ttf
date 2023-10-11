@@ -6,8 +6,16 @@
 	  , "weight": "Regular"
 	}
 , "glyph_options":
-	{ "font_scale": 400
-	  ,"font_offset": -50
+	{ "Comment": "This is the original setup with offsets and scale similar to the SUN symbol font"
+	  ,"font_scale": 200      
+	  ,"font_offset": 300	 
+	  ,"left_side_berring": 100
+	  ,"right_side_berring": 200
+	}
+"##glyph_options":
+	{ "Comment": "This setup will be consistant with the normal text"
+	  ,"font_scale": 400      
+	  ,"font_offset": -50	 
 	  ,"left_side_berring": 100
 	  ,"right_side_berring": 200
 	}
