@@ -1,8 +1,9 @@
 
 __pycache__/*
+Svg/*
 Log/*
 Dist/*
-Svg/*
+*.sfd
 *.log
 *.dbg
 *.err
