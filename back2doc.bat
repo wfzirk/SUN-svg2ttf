@@ -4,7 +4,7 @@ Build the backfont documents
 set ver=x.x
 set ttffont=Input/times.ttf
 set language=ENG
-set infile=dist/SUNBFx.x_ENG.sfd
-set outfile=dist/SUNBFx.x_ENG.txt
+set infile=dist/example%ver%_%language%.sfd
+set outfile=dist/example%ver%_%language%.txt
 
 cmd /c fontforge -quiet -script back2doc_ttf.py %infile% %outfile% 

@@ -12,7 +12,7 @@
 	  ,"left_side_berring": 100
 	  ,"right_side_berring": 200
 	}
-"##glyph_options":
+, "glyph_options_normal":
 	{ "Comment": "This setup will be consistant with the normal text"
 	  ,"font_scale": 400      
 	  ,"font_offset": -50	 
