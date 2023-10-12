@@ -1,4 +1,4 @@
-*Instructions for FontForge Language scripts**
+**Instructions for FontForge Language scripts**
 
 10 Oct 2023
 
