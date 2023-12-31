@@ -13,28 +13,29 @@ version_re = re.compile('^Version: (.+)$', re.M)
 
 def get_version():
     # Return the version if it has been injected into the file by git-archive
-    version = tag_re.search('tag: 1.00')
+    #version = tag_re.search('tag: 1.00')
     #print('v1',version)
-    if version:
-        #print('vg',version)
-        return version.group(1)
+    #if version:
+    #    #print('vg',version)
+    #    return version.group(1)
 
     d = dirname(__file__)
 
     if isdir(join(d, '.git')):
         # Get the version using "git describe".
         #cmd = 'git describe --tags --match %s[0-9]* --dirty' % PREFIX
-        cmd = 'git describe --tags'
+        #cmd = 'git describe --tags'
+        cmd = 'git describe'
         try:
             version = check_output(cmd.split()).decode().strip()[len(PREFIX):]
         except CalledProcessError:
             raise RuntimeError('Unable to get version number from git tags')
 
         # PEP 440 compatibility
-        if '-' in version:
-            if version.endswith('-dirty'):
-                raise RuntimeError('The working tree is dirty')
-            version = version.split('-')[0]
+        #if '-' in version:
+        #    if version.endswith('-dirty'):
+        #        raise RuntimeError('The working tree is dirty')
+        #    version = version.split('-')[0]
         with open('version.ini', 'w') as f:
             f.write(version)
             #print('w',version)
