@@ -1,10 +1,9 @@
-Build the backfont documents
+
+::  Build the backfont documents
+
 @echo on
+Setlocal EnableDelayedExpansion
 
-set ver=x.x
-set ttffont=Input/times.ttf
-set language=ENG
-set infile=dist/example%ver%_%language%.sfd
-set outfile=dist/example%ver%_%language%.txt
+call doEnv_ttf.bat
 
-cmd /c fontforge -quiet -script back2doc_ttf.py %infile% %outfile% 
+cmd /c fontforge -quiet -script back2doc_ttf.py %sfdfile% %txtfile% 

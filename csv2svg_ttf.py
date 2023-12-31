@@ -4,6 +4,7 @@
 # https://fontforge.github.io/python.html
 # https://stackoverflow.com/questions/14813583/set-baseline-with-fontforge-scriping
 # https://www.reddit.com/r/neography/comments/83ovk7/creating_fonts_with_inkscape_and_fontforge_part10/
+# https://www.php.net/manual/en/imagick.queryfontmetrics.php
 
 import sys
 import os
@@ -21,71 +22,92 @@ def mkdirp(path):
     if not os.path.exists(path):
         os.makedirs(path) 
 
-def makeSVG(fontName, uniName, name, language):
+def makeSVG(fontName, itype, name, unicode, language):
     svgopt = config["svg_options"]
-    svgFile = "Svg\\"+language+"_"+uniName+".svg"
+    svgFile = "Svg\\"+unicode+"-"+itype+"-"+language+".svg"
+    pngFile = "Png\\"+unicode+"-"+itype+"-"+language+".png"
     pnmFile = "tmp.pnm"
 
     if glob.glob(svgFile):
-        logging.warning('file pattern %s alreadyexists',uniName)
-        return 0
+        logging.warning('***duplicate file %s',svgFile) 
+        return 'duplicate'
+    if glob.glob(pngFile):
+        logging.warning('***duplicate file %s',pngFile)  
+        return 'duplicate'
         
-    exists = os.path.isfile(svgFile)
-    if not exists:
-        #cmd = "magick convert" + " -font "+fontName+" -pointsize 72 label:"+'"'+name+'"'+" "+pnmFile
+
+    #cmd = "magick convert" + " -font "+fontName+" -pointsize 72 label:"+'"'+name+'"'+" "+pnmFile
+    cmd = "magick convert" + " -font "+fontName \
+        +" -pointsize "+str(svgopt["pointsize"]) \
+        +" -interword-spacing "+ str(svgopt["interword-spacing"]) \
+        +" label:"+'"'+name+'"'+" -trim "+pnmFile
+    logging.info(cmd)
+    try:
+        status = subprocess.call(cmd, shell=True)   
+        cmd = "potrace" +" --svg "+pnmFile+" -o "+'"'+svgFile+'"'
+        logging.info('   status %s %s ',status, cmd)
+        if status == 0:
+            status = subprocess.call(cmd, shell=True)
+        if status != 0:    
+            logging.error('Error processing  %s %s',status, cmd)
+            return(status)
+
         cmd = "magick convert" + " -font "+fontName \
             +" -pointsize "+str(svgopt["pointsize"]) \
             +" -interword-spacing "+ str(svgopt["interword-spacing"]) \
-            +" label:"+'"'+name+'"'+" "+pnmFile
+            +" label:"+'"'+name+'"'+" -trim "+pngFile
         logging.info(cmd)
-        try:
-            status = subprocess.call(cmd, shell=True)                #cmd = "potrace" +" --height 1.0 -s tmp.pnm -o "+'"'+svgFile+'"'
-            cmd = "potrace" +" --height 1.0 -s "+pnmFile+" -o "+'"'+svgFile+'"'
-            logging.info('   potrace %s %s ',status, cmd)
-            if status == 0:
-                status = subprocess.call(cmd, shell=True)
-            if status != 0:    
-                logging.error('Error processing  %s %s',status, cmd)
-                return(status)
-        except Exception as  e:
-            logging.exception("fatal error makeSVG file  %s %s", svgFile,e)
-            return(2)
-    else:
-        logging.warning('***duplicate file %s',svgFile)  #, file=sys.stderr)
-
+        status = subprocess.call(cmd, shell=True)
+        if status != 0:    
+            logging.error('Error processing  %s %s',status, cmd)
+            return(status)
+            
+    except Exception as  e:
+        logging.exception("fatal error makePNG file  %s %s", pngFile, e)
+        return(2)  
+            
     return(0)
 
-def read_list(fontname, csvFile, language):
+def read_list(fontName, csvFile, language):
     langColumns = config["lang_columns"]
+    ixt = langColumns["index_type"]
     ixu = langColumns["index_unicode"]
-    ixn = langColumns["index_langName"]
+    ixn = langColumns["index_name"]
     status = 0
     try:
-        logging.info('readlist %s %s %s',fontname, csvFile, language)
+        logging.info('readlist %s %s %s',fontName, csvFile, language)
         logging.info('dict columns ixu %s  ixn  %s',ixu,ixn)
-        with open(csvFile, encoding='utf8') as csvDataFile:
-            csvReader = csv.reader(csvDataFile, delimiter=',', quotechar ='"')
-            for row in csvReader:
-                logging.info(row)
-                logging.debug('%s %s',row[ixn],row[ixu])
-                ncol = len(row)
-                name = row[ixn].strip()  #.replace(" ","_")
-                
-                unicode = row[ixu].strip().lower()
-                if len(name) == 0:
-                    continue
-      
-                if (len(row) < 3) or (len(row[ixu])) != 4: 
-                    logging.info('row wrong length row len %s  unicode len %s',len(row),len(row[ixu]))
-                    continue
+        with open('Dist/duplicates.txt', 'w') as dup:
+                with open(csvFile, encoding='utf8') as csvDataFile:
+                    csvReader = csv.reader(csvDataFile, delimiter=',', quotechar ='"')
+                    for line in csvReader:
+                        #print(type(line),len(line), line)
+                        #print(str(line))
+                        # incase csv file has leading and trailing double quotes
+                        if len(line) == 1:
+                            row = str(line).strip().strip('"')
+                            row = row.split(',')
+                        else:
+                            row = line
 
-                if len(unicode) < 4:
-                    status = makeSVG(fontname, name, name, language)
-                else:
-                    status = makeSVG(fontname, unicode, name, language)
+                        name = row[ixn].strip()  #.replace(" ","_")
+                        unicode = row[ixu].strip().lower()
+                        if len(name) == 0:
+                            continue
+                        
+                        if (len(row) < 3) or (len(row[ixu])) != 4: 
+                            logging.info('row wrong length row len %s  unicode len %s',len(row),len(row[ixu]))
+                            continue
 
-                if status != 0:
-                    return status
+                        if len(unicode) == 4:
+                            status = makeSVG(fontName, row[ixt], name, unicode, language)
+
+                        if status != 0:
+                            if status == 'duplicate':
+                                status = 'Duplicate Entry '+unicode+':'+name
+                                dup.write(status+'\n')
+                            else:    
+                                return status
 
     except Exception as e:
         logging.exception("fatal error read_list %s",e)   # file=sys.stderr)
@@ -123,13 +145,17 @@ def main(*ffargs):
     if rc == 0:
         logging.info('Done SVG files are in Svg directory')
     else:
-        logging.error('Failed %d',rc)
+        if 'Duplicate' in rc:
+            logging.warning('Duplicates found %s',rc)
+        else:
+            logging.error('Failed %s',rc)
 
     return(rc)
 
 if __name__ == "__main__":
     mkdirp('Log')
     mkdirp('Svg')
+    mkdirp('Png')
     mkdirp('Dist')
     rc = main(sys.argv) 
     sys.exit(rc)

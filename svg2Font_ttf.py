@@ -7,6 +7,7 @@
 # https://pelson.github.io/2017/xkcd_font_raster_to_vector_and_basic_font_creation/
 # https://www.reddit.com/r/neography/comments/83ovk7/creating_fonts_with_inkscape_and_fontforge_part10/
 # https://github.com/pteromys/svgs2ttf/blob/master/README.md
+# https://freetype.org/freetype2/docs/glyphs/glyphs-3.html
 
 import fontforge as ff
 import psMat
@@ -14,45 +15,35 @@ import os
 import sys
 import csv
 import os.path
+import xml.etree.ElementTree as ET
 import logging
 
 from bfLog import log_setup
 from bfConfig_ttf import bfVersion, loadConfig
  
 config = loadConfig() 
-ffMetrics = {}  # font metrics taken from font
+ffMetrics = {} 
 
-'''    
-   Font         ascent  _____
-   Metrics      xheight _____   scale = 200/xheight
-   scaling      base    _____   height =200  scale = xheight / 200
-                descent _____   d = font_descender / scale
-                
-   wordMax and wordMin are whole word metrics calculated from font for each word
-   ff_asc, ff_dsc, ff_height taken from the defult font metrics for all of font
 '''
-
 def getWord(word):
     #logging.info(word)
     maxt = 0
     minb = 0
-    ww = []
+    ##ww = []
     try:
         for w in word:
             g = ffMetrics["ttfFont"][ord(w)]
-            #logging.info(g.glyphname)
-            #name = g.glyphname
-            left, bot, right, top = g.boundingBox()
-            #name = g.glyphname
-            ww = [bot, top]
-            b = ww[0]
-            t = ww[1]
-            if b < minb:
-                minb = b
-            if t > maxt:
-                maxt = t
-
+            #g.left_side_bearing = 10     #75
+            #g.right_side_bearing = 10 
+            if g.glyphclass == 'baseglyph':
+                left, bot, right, top = g.boundingBox()
+                logging.info('getWord %s \t%s \t%s \t%s',w, (right-left), (top-bot))
+                minb = min(minb, bot)
+                maxt = max(maxt, top) 
+            #if g.glyphclass == 'mark':
+            #    maxt = max(maxt, top)
         logging.info('getWord %s \t%s \t%s',word, minb, maxt)
+        #logging.info('bearings  %s  %s', int(g.left_side_bearing), int(g.right_side_bearing)) 
     except Exception as e:
             logging.exception('exception %s name:%s ord:%s word:%s min:%s max:%s',e, w, ord(w), word, minb, maxt)
             #traceback.print_exc()
@@ -62,8 +53,8 @@ def getWord(word):
 
 def scale(glyph):   #, wordMin, wordMax):
     #global desc_scale
-    options = config["glyph_options"]
-    
+    #options = config["glyph_options"]
+    options = config["glyph_options_normal"]
     wordMin, wordMax = getWord(glyph.glyphname)
     logging.info(glyph)
     printBound(glyph,'Image Size')
@@ -107,31 +98,94 @@ def setBearing(glyph):
     glyph.right_side_bearing = options["right_side_berring"]     #75
     #log_info('bearing', round(glyph.left_side_bearing,2), round(glyph.right_side_bearing,2), round(right-left, 2))
     logging.info('bearing left:%5.2f right:%5.2f width:%5.2f', glyph.left_side_bearing, glyph.right_side_bearing, (right-left))
-    
-def addFont(font, unicode, language, imagename):  #, mn, mx) :
+'''
 
+
+def wordMetrics(word):
+    # get dimensions of ttfFont word
+    ymin = 0
+    height = 0
+    width = 0
+    for w in word:
+        g = ffMetrics["ttfFont"][ord(w)]
+        left, bot, right, top = g.boundingBox()
+        if g.glyphclass == 'baseglyph':
+            ymin = min(bot, ymin)
+            height = max((top-bot),height)
+            width = width + (right - left)
+        
+    #print('wordMetrics', word, ymin, height, width)
+    return(ymin, height, width)
+
+def svgMeta(svgFile):
+    #print('svgm',filename)
+    tree = ET.parse(svgFile)
+        
+    width, height = tree.getroot().attrib["width"], tree.getroot().attrib["height"]
+    width = int(float(width.replace('pt','')))
+    height = int(float(height.replace('pt','')))
+    #print(f"{os.path.basename(svgFile)}: Width: {width} Height: {height}")
+    return(width, height)  
+
+unicodeList = []        # check for duplicates
+glyphOptions = config["glyph_options_normal"]
+def addFont(font, itype, word, unicode, language):
+    logging.info('addfont- %s %s', unicode, word)
+    
     try:
-        file = "svg\\"+language+"_"+unicode+".svg"
-        exists = os.path.isfile(file)
-        if exists:
-            logging.info('addFont file %s %s %s', file, unicode, imagename)
-            '''
-            if unicode == -1:
-                glyph = font.createChar(-1, imagename)
-            else:
-                glyph = font.createChar(int(unicode, 16))
-            '''    
-            glyph = font.createChar(int(unicode, 16), imagename)
-            glyph.importOutlines(file)  
-            scale(glyph)    #, mn, mx)
-            setBearing(glyph) 
-            glyph.glyphname = language+"_"+unicode #change glyphname after scaling to get consistent size of glyph words               
+        if unicode in unicodeList:
+            logging.info('duplicate unicode  %s', unicode)
+        
         else:
-            logging.warning("file %s does not exist", file)
-            return(2)
+            unicodeList.append(unicode)
+
+            imgFile = "Svg\\"+unicode+"-"+itype+"-"+language+".svg"
+            exists = os.path.isfile(imgFile)
+            if exists:
+                # get dimensions of word from original font
+                wMin, wHeight, wWidth = wordMetrics(word)
+                # get dimensions of image - for information only
+                svgWidth, svgHeight = svgMeta(imgFile)
+                
+                # create a new glyph with the code point unicode
+                glyph = font.createChar(int(unicode, 16), 'u'+unicode)
+                # import svg file into it
+                glyph.importOutlines(imgFile) 
+                
+                # get dimensions of glyph
+                gbbox = glyph.boundingBox()
+                gWidth = int(gbbox[2] - gbbox[0])
+                gHeight = int(gbbox[3] - gbbox[1])
+                gMin = int(gbbox[1])
+                
+                logging.info('widths %s %s svg:%s, word:%s glyph:%s ' % (unicode, word, svgWidth, wWidth, gWidth))
+                logging.info('heights  svg:%s, word:%s glyph:%s wMin:%s  gMin:%s' % (svgHeight, wHeight, gHeight, wMin, gMin))
+
+                # scale glyph to fit word
+                wScale = wWidth/gWidth
+                scale_matrix = psMat.scale(wScale)
+                logging.info('scale %s %s',wScale, scale_matrix)
+                glyph.transform(scale_matrix)
+                
+                # make the glyph rest on the baseline
+                ymin = glyph.boundingBox()[1]
+                y = ymin - wMin
+                glyph.transform([1, 0, 0, 1, 0, -y])
+                
+                # scale to xheight
+                s = glyphOptions["font_scale"]/ffMetrics['xheight']
+                scale_matrix = psMat.scale(s)
+                glyph.transform(scale_matrix)
+                
+                # set glyph side bearings, can be any value or even 0
+                glyph.left_side_bearing = glyphOptions["left_side_bearing"]
+                glyph.right_side_bearing = glyphOptions["right_side_bearing"]
+
+            else:
+                logging.warning("file %s does not exist", imgFile)
+                return(2)
     except Exception as e:
-        logging.exception('exception %s file:%s  unicode:%s',file,e, unicode)
-        #traceback.print_exc()
+        logging.exception('exception %s file:%s  unicode:%s',imgFile,e, unicode)
         return(1)
    
 def createFont(backfont):  
@@ -163,27 +217,34 @@ def createFont(backfont):
 def read_list(font, csvFile, language): 
     logging.info('readlist %s',csvFile)
     langColumns = config["lang_columns"]
+    ixt = langColumns["index_type"]
     ixu = langColumns["index_unicode"]
-    ixn = langColumns["index_langName"]
-           
+    ixn = langColumns["index_name"]
+    
     try:
         with open(csvFile, encoding='utf8') as csvDataFile:
             csvReader = csv.reader(csvDataFile, delimiter=',', quotechar ='"') 
-            cnt = 0
-            for row in csvReader:
-  
+
+            for line in csvReader:
+                # incase csv file has leading and trailing double quotes
+                if len(line) == 1:
+                    row = str(line).strip().strip('"')
+                    row = row.split(',')
+                else:
+                    row = line
                 if (len(row) < 3) or (len(row[ixu])) != 4: 
-                    logging.info('row %d wrong length row len %s  unicode len %s', cnt,len(row),len(row[ixu]))
-                    cnt+=1
+                    logging.info('wrong length row len %s  unicode len %s', len(row),len(row[ixu]))
                     continue
-                ncol = len(row)
+                iType = row[ixt]
+                if iType.upper() != 'PRI':
+                    # only primary words to make font
+                    continue
                 unicode = row[ixu].lower()
-                name = row[ixn]
-                unicode = row[ixu].lower()
-                name = row[ixn].strip()
-                addFont(font, unicode, language, name)
-                cnt+=1
-                
+ 
+                word = row[ixn].strip()
+                rc = addFont(font, iType, word, unicode, language)
+                if rc:
+                    return rc
     except Exception as  e:
         logging.exception("fatal error read_list %s",e)
         return(1)
@@ -192,14 +253,12 @@ def read_list(font, csvFile, language):
     
 def getMetrics(ttfFile, ttfFont):
     global ffMetrics
-    v = {}
-    v['ttfFile'] = ttfFile
-    v['ttfFont'] = ttfFont
-    v['xheight'] = float(ttfFont.xHeight)
-    v['ascender'] = float(ttfFont.os2_typoascent)
-    v['descender'] = float(ttfFont.os2_typodescent)
-    ffMetrics = v
-    logging.info('ffmetrics ascent= %s descent= %s xHeight= %s'%(v['ascender'], v['descender'], v['xheight']))
+    ffMetrics['ttfFile'] = ttfFile
+    ffMetrics['ttfFont'] = ttfFont
+    ffMetrics['xheight'] = float(ttfFont.xHeight)
+    ffMetrics['ascender'] = float(ttfFont.os2_typoascent)
+    ffMetrics['descender'] = float(ttfFont.os2_typodescent)
+    logging.info('ffmetrics ascent= %s descent= %s xHeight= %s'%(ffMetrics['ascender'], ffMetrics['descender'], ffMetrics['xheight']))
 
 def main(*ffargs):
     lgh = log_setup('Log/'+__file__[:-3]+'.log') 
